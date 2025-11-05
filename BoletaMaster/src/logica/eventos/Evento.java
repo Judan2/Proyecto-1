@@ -1,7 +1,7 @@
 package logica.eventos;
 
 import java.util.*;
-import logica.eventos.Venue;
+//import logica.eventos.Venue;
 
 public class Evento {
     private String id;

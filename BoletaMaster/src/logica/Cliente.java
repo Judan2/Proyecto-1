@@ -1,124 +1,117 @@
 package logica;
 
-import excepciones.*;
-import logica.tickets.*;
-import logica.eventos.*;
-import java.util.*;
-
-public class Cliente extends Usuario {
+/**
+ * Representa un CLIENTE del sistema
+ * 
+ * DATOS:
+ * - Login y contraseña
+ * - Nombre
+ * - Email
+ * - Saldo disponible
+ */
+public class Cliente {
+    private String login;
+    private String password;
+    private String nombre;
+    private String email;
     private double saldo;
-    private Map<String, Tiquete> tiquetes = new HashMap<>();
-    private List<Transaccion> transacciones = new ArrayList<>();
-    private static final int MAX_TICKETS_PER_TX = 10;
 
-    public Cliente(String login, String password, double saldoInicial) {
-        super(login, password);
-        this.saldo = saldoInicial;
+    // CONSTRUCTOR
+    public Cliente(String login, String password, String nombre, String email) {
+        this.login = login;
+        this.password = password;
+        this.nombre = nombre;
+        this.email = email;
+        this.saldo = 0.0; // Saldo inicial es 0
+    }
+
+    // GETTERS
+    public String getLogin() {
+        return login;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public String getNombre() {
+        return nombre;
+    }
+
+    public String getEmail() {
+        return email;
     }
 
     public double getSaldo() {
         return saldo;
     }
 
-    public void acreditar(double monto) {
-        this.saldo += monto;
+    // SETTERS
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
     }
 
-    public void debitar(double monto) throws SaldoInsuficienteException {
-        if (saldo < monto) {
-            throw new SaldoInsuficienteException(
-                "Saldo insuficiente: saldo=" + saldo + ", costo=" + monto);
-        }
-        this.saldo -= monto;
+    public void setEmail(String email) {
+        this.email = email;
     }
 
-    public Collection<Tiquete> getTiquetes() {
-        return tiquetes.values();
+    public void setSaldo(double nuevoSaldo) {
+        this.saldo = nuevoSaldo;
     }
 
-    public Transaccion comprarTiquetes(Evento evento, Localidad localidad, int cantidad,
-            double precioUnitario) throws SaldoInsuficienteException, LimiteTiquetesException,
-            EventoNoAprobadoException {
-
-        if (!evento.getVenue().isAprobado()) {
-            throw new EventoNoAprobadoException("El venue del evento no está aprobado.");
-        }
-
-        if (cantidad <= 0) {
-            throw new IllegalArgumentException("Cantidad debe ser > 0.");
-        }
-
-        if (cantidad > MAX_TICKETS_PER_TX) {
-            throw new LimiteTiquetesException(
-                "Se supera el límite de tiquetes por transacción: " + MAX_TICKETS_PER_TX);
-        }
-
-        if (localidad.getCapacidadDisponibles() < cantidad) {
-            throw new IllegalStateException("No hay disponibilidad suficiente en la localidad.");
-        }
-
-        double total = precioUnitario * cantidad;
-        if (saldo < total) {
-            throw new SaldoInsuficienteException(
-                "Saldo insuficiente: saldo=" + saldo + ", total=" + total);
-        }
-
-        Transaccion trx = new Transaccion(total, "SALDO");
-        for (int i = 0; i < cantidad; i++) {
-            Tiquete t = new Tiquete(localidad, precioUnitario, this);
-            trx.agregarTiquete(t);
-            tiquetes.put(t.getId(), t);
-            localidad.marcarVendido();
-        }
-
-        transacciones.add(trx);
-        debitar(total);
-        return trx;
+    // MÉTODOS
+    
+    /**
+     * Agrega dinero al saldo (cuando vende tiquetes)
+     */
+    public void agregarSaldo(double cantidad) {
+        this.saldo += cantidad;
     }
 
-    public Transferencia transferirTiquete(String idTiquete, Cliente destino, String pwd)
-            throws UsuarioNoAutenticadoException, TiqueteNoTransferibleException {
-
-        if (!this.autenticar(pwd)) {
-            throw new UsuarioNoAutenticadoException("Contraseña incorrecta para usuario " + login);
+    /**
+     * Resta dinero del saldo (cuando compra tiquetes)
+     */
+    public boolean restarSaldo(double cantidad) {
+        if (this.saldo < cantidad) {
+            return false; // Saldo insuficiente
         }
-
-        Tiquete t = tiquetes.get(idTiquete);
-        if (t == null) {
-            throw new IllegalArgumentException("Tiquete no encontrado: " + idTiquete);
-        }
-
-        if (!t.isTransferible()) {
-            throw new TiqueteNoTransferibleException("Tiquete no transferible: " + idTiquete);
-        }
-
-        if (t.isUsado()) {
-            throw new IllegalStateException("Tiquete ya usado: " + idTiquete);
-        }
-
-        tiquetes.remove(idTiquete);
-        t.setPropietario(destino);
-        destino.recibirTiquete(t);
-
-        return new Transferencia(this.login, destino.getLogin());
+        this.saldo -= cantidad;
+        return true;
     }
 
-    public void recibirTiquete(Tiquete t) {
-        tiquetes.put(t.getId(), t);
+    /**
+     * Verifica si tiene saldo suficiente
+     */
+    public boolean tieneSaldoSuficiente(double cantidad) {
+        return this.saldo >= cantidad;
     }
 
-    public void imprimirTiquetes() {
-        System.out.println("\n--- Tiquetes de " + login + " ---");
-        if (tiquetes.isEmpty()) {
-            System.out.println("  (ninguno)");
-            return;
-        }
-        for (Tiquete t : tiquetes.values()) {
-            System.out.println("  " + t);
-        }
+    /**
+     * Compara dos clientes por su login
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null) return false;
+        if (!(obj instanceof Cliente)) return false;
+        
+        Cliente otro = (Cliente) obj;
+        return this.login.equals(otro.login);
     }
 
-    public List<Transaccion> getTransacciones() {
-        return transacciones;
+    /**
+     * Hash basado en el login
+     */
+    @Override
+    public int hashCode() {
+        return this.login.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return String.format(
+            "Cliente[%s] - Nombre: %s - Email: %s - Saldo: $%.2f",
+            login, nombre, email, saldo
+        );
     }
 }
